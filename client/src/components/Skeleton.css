@@ -1,0 +1,58 @@
+/* 定义骨架屏的微光闪烁动画 */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+
+/* 核心样式：给所有占位块加上动态光效 */
+.skeleton-video,
+.skeleton-avatar,
+.skeleton-text {
+  background: #f0f2f5;
+  /* 利用线性渐变模拟光扫过的效果 */
+  background-image: linear-gradient(
+    90deg,
+    #f0f2f5 25%,
+    #e6e8eb 37%,
+    #f0f2f5 63%
+  );
+  background-size: 400% 100%; /* 背景必须够宽才能移动 */
+  animation: shimmer 1.4s ease infinite;
+}
+
+.skeleton-video {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.skeleton-info {
+  display: flex;
+  align-items: center;
+}
+
+.skeleton-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 10px;
+  flex-shrink: 0; /* 防止头像被挤扁 */
+}
+
+.skeleton-text {
+  height: 16px;
+  flex: 1;
+  border-radius: 4px;
+}
