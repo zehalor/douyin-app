@@ -1,3 +1,4 @@
+```
 douyin-app
 ├── client/ # 前端项目 (React)
 │ ├── src/
@@ -22,3 +23,4 @@ douyin-app
 │ └── package.json # 后端依赖配置
 │
 └── README.md # 项目说明文档
+```
