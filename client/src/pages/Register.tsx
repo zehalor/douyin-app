@@ -4,23 +4,22 @@ import { useNavigate, Link } from "react-router-dom";
 
 const { Title } = Typography;
 
-const Login = () => {
+const Register = () => {
   const navigate = useNavigate();
 
   const onFinish = async (values: any) => {
     try {
-      const res = await axios.post("http://localhost:3000/api/auth/login", {
+      // 发送注册请求
+      await axios.post("http://localhost:3000/api/auth/register", {
         username: values.username,
         password: values.password,
       });
 
-      message.success("登录成功！欢迎回来 " + res.data.user.username);
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      navigate("/");
+      message.success("注册成功！请登录");
+      // 注册成功后自动跳到登录页
+      navigate("/login");
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || "登录失败，请检查网络";
+      const errorMsg = error.response?.data?.error || "注册失败，请重试";
       message.error(errorMsg);
     }
   };
@@ -43,7 +42,7 @@ const Login = () => {
       </div>
 
       <Card
-        title="登录后台系统"
+        title="注册新账号"
         style={{
           width: 400,
           borderRadius: 8,
@@ -51,7 +50,7 @@ const Login = () => {
         }}
       >
         <Form
-          name="login"
+          name="register"
           onFinish={onFinish}
           autoComplete="off"
           layout="vertical"
@@ -61,7 +60,7 @@ const Login = () => {
             name="username"
             rules={[{ required: true, message: "请输入用户名!" }]}
           >
-            <Input size="large" />
+            <Input size="large" placeholder="给自己起个好听的名字" />
           </Form.Item>
 
           <Form.Item
@@ -69,17 +68,17 @@ const Login = () => {
             name="password"
             rules={[{ required: true, message: "请输入密码!" }]}
           >
-            <Input.Password size="large" />
+            <Input.Password size="large" placeholder="设置一个密码" />
           </Form.Item>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block size="large">
-              登录
+              立即注册
             </Button>
           </Form.Item>
 
           <div style={{ textAlign: "center" }}>
-            还没有账号？ <Link to="/register">去注册</Link>
+            已有账号？ <Link to="/login">去登录</Link>
           </div>
         </Form>
       </Card>
@@ -87,4 +86,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

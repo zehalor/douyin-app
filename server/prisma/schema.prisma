@@ -25,6 +25,7 @@ model Video {
   description String?
   videoUrl    String
   coverUrl    String?
+  ratio       String   @default("3/4")
   createdAt   DateTime @default(now())
 
   views       Int      @default(0)
