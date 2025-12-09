@@ -10,16 +10,14 @@ export const createVideo = async (req: Request, res: Response) => {
   try {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
-    // 检查必传的视频文件
     if (!files || !files.video || files.video.length === 0) {
       return res.status(400).json({ error: "未上传视频文件" });
     }
 
     const videoFile = files.video[0];
-    const coverFile = files.cover ? files.cover[0] : null; // 封面是可选的
+    const coverFile = files.cover ? files.cover[0] : null;
 
     const { title, description, ratio } = req.body;
-
     const authorId = req.userId!;
 
     const videoUrl = `http://localhost:3000/uploads/${videoFile.filename}`;
@@ -48,24 +46,38 @@ export const createVideo = async (req: Request, res: Response) => {
 // 获取视频列表
 export const getVideos = async (req: Request, res: Response) => {
   try {
-    const { keyword, sort } = req.query;
+    const { keyword, sort, authorId } = req.query;
 
-    const whereCondition = keyword
-      ? {
-          OR: [
-            { title: { contains: String(keyword) } },
-            { description: { contains: String(keyword) } },
-          ],
-        }
-      : {};
+    const whereCondition: any = {};
 
-    const orderBy =
-      sort === "oldest" ? { createdAt: "asc" } : { createdAt: "desc" };
+    if (keyword) {
+      whereCondition.OR = [
+        { title: { contains: String(keyword) } },
+        { description: { contains: String(keyword) } },
+      ];
+    }
+
+    if (authorId) {
+      whereCondition.authorId = Number(authorId);
+    }
+
+    let orderBy: any = { createdAt: "desc" };
+
+    if (sort === "oldest") {
+      orderBy = { createdAt: "asc" };
+    } else if (sort === "views") {
+      orderBy = { views: "desc" };
+    } else if (sort === "likes") {
+      orderBy = { likes: { _count: "desc" } };
+    }
 
     const videos = await prisma.video.findMany({
       where: whereCondition,
-      include: { author: true },
-      orderBy: orderBy as any,
+      include: {
+        author: true,
+        likes: true,
+      },
+      orderBy: orderBy,
     });
 
     res.json(videos);
@@ -74,62 +86,21 @@ export const getVideos = async (req: Request, res: Response) => {
   }
 };
 
-// 删除视频
-export const deleteVideo = async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-
-    const video = await prisma.video.findUnique({ where: { id } });
-    if (!video) {
-      return res.status(404).json({ error: "视频不存在" });
-    }
-
-    // 尝试物理删除相关文件 (包括视频和封面)
-    const filesToDelete = [video.videoUrl];
-    if (video.coverUrl) filesToDelete.push(video.coverUrl);
-
-    filesToDelete.forEach((url) => {
-      try {
-        const filename = path.basename(url);
-        const filepath = path.join(__dirname, "../../uploads", filename);
-        if (fs.existsSync(filepath)) {
-          fs.unlinkSync(filepath);
-        }
-      } catch (err) {
-        console.warn(`Failed to delete file: ${url}`, err);
-      }
-    });
-
-    await prisma.video.delete({ where: { id } });
-
-    res.json({ message: "删除成功" });
-  } catch (error) {
-    console.error("Delete video error:", error);
-    res.status(500).json({ error: "删除失败" });
-  }
-};
-
-// 更新视频信息
-export const updateVideo = async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    const { title, description } = req.body;
-
-    const updatedVideo = await prisma.video.update({
-      where: { id },
-      data: { title, description },
-    });
-
-    res.json(updatedVideo);
-  } catch (error) {
-    res.status(500).json({ error: "更新失败" });
-  }
-};
-
 // 获取视频详情
 export const getVideoById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
+
+    // 播放量 +1
+    try {
+      await prisma.video.update({
+        where: { id },
+        data: { views: { increment: 1 } },
+      });
+    } catch (e) {
+      // 忽略更新错误
+    }
+
     const video = await prisma.video.findUnique({
       where: { id },
       include: {
@@ -150,7 +121,7 @@ export const getVideoById = async (req: Request, res: Response) => {
   }
 };
 
-// 点赞/取消点赞
+// 点赞/取消
 export const toggleLike = async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
@@ -174,7 +145,7 @@ export const toggleLike = async (req: Request, res: Response) => {
   }
 };
 
-// 发表评论
+// 评论
 export const addComment = async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
@@ -189,5 +160,55 @@ export const addComment = async (req: Request, res: Response) => {
     res.json(comment);
   } catch (error) {
     res.status(500).json({ error: "评论失败" });
+  }
+};
+
+// 删除视频
+export const deleteVideo = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+
+    const video = await prisma.video.findUnique({ where: { id } });
+    if (!video) return res.status(404).json({ error: "视频不存在" });
+
+    // 删除文件
+    const filesToDelete = [video.videoUrl];
+    if (video.coverUrl) filesToDelete.push(video.coverUrl);
+
+    filesToDelete.forEach((url) => {
+      try {
+        const filename = path.basename(url);
+        const filepath = path.join(__dirname, "../../uploads", filename);
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+      } catch (err) {
+        console.warn("File delete error", err);
+      }
+    });
+
+    // 级联删除
+    await prisma.comment.deleteMany({ where: { videoId: id } });
+    await prisma.like.deleteMany({ where: { videoId: id } });
+    await prisma.video.delete({ where: { id } });
+
+    res.json({ message: "删除成功" });
+  } catch (error) {
+    res.status(500).json({ error: "删除失败" });
+  }
+};
+
+// 更新视频
+export const updateVideo = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { title, description } = req.body;
+
+    const updatedVideo = await prisma.video.update({
+      where: { id },
+      data: { title, description },
+    });
+
+    res.json(updatedVideo);
+  } catch (error) {
+    res.status(500).json({ error: "更新失败" });
   }
 };

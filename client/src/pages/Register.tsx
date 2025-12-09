@@ -66,9 +66,15 @@ const Register = () => {
           <Form.Item
             label="密码"
             name="password"
-            rules={[{ required: true, message: "请输入密码!" }]}
+            rules={[
+              { required: true, message: "请输入密码!" },
+              { min: 6, message: "密码长度不能少于6位" },
+            ]}
           >
-            <Input.Password size="large" placeholder="设置一个密码" />
+            <Input.Password
+              size="large"
+              placeholder="设置一个密码 (不少于6位)"
+            />
           </Form.Item>
 
           <Form.Item>

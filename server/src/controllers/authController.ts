@@ -65,3 +65,38 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({ error: "登录服务异常" });
   }
 };
+
+// 修改密码
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId; // 从 authMiddleware 获取
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: "请输入旧密码和新密码" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "用户不存在" });
+    }
+
+    // 验证旧密码
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "旧密码错误" });
+    }
+
+    // 加密新密码并更新
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ message: "密码修改成功" });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json({ error: "修改密码失败" });
+  }
+};

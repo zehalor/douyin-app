@@ -4,6 +4,9 @@ import {
   getVideos,
   deleteVideo,
   updateVideo,
+  getVideoById,
+  toggleLike,
+  addComment,
 } from "../controllers/videoController";
 import { upload } from "../utils/upload";
 import { authMiddleware } from "../middlewares/auth";
@@ -11,6 +14,11 @@ import { authMiddleware } from "../middlewares/auth";
 const router = Router();
 
 router.get("/", getVideos);
+
+router.get("/:id", getVideoById);
+router.post("/:id/like", authMiddleware, toggleLike);
+router.post("/:id/comments", authMiddleware, addComment);
+
 router.post(
   "/",
   authMiddleware,
@@ -20,6 +28,7 @@ router.post(
   ]),
   createVideo
 );
+
 router.put("/:id", updateVideo);
 router.delete("/:id", deleteVideo);
 
